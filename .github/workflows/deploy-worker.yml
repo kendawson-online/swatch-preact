@@ -1,0 +1,36 @@
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches:
+      - main
+    # Optional: only run when worker files change
+    paths:
+      - 'workers/**'
+      - 'wrangler.toml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install wrangler
+        run: npm install -g wrangler@latest
+
+      - name: Deploy Worker
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          # optional: print wrangler version
+          wrangler --version
+          # deploy according to your wrangler.toml
+          wrangler deploy --verbose
