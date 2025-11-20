@@ -157,3 +157,7 @@
 .icon-moon-light { color: #6c757d; }
 
 .swatch-clock-wrap { color: var(--font-color, inherit); font-family: var(--font-family, inherit); }
+
+/* Reminder bell button styles */
+.bell-dark { background-color: #ffc107; color: #212529; }
+.bell-light { background-color: #fd7e14; color: #fff; }

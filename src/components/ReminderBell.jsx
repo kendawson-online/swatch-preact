@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
+import { requestNotificationPermission, showNotification } from '../utils/notifications';
 
 export function ReminderBell({ events, darkTheme, onDismiss }) {
   const [activeReminders, setActiveReminders] = useState([]);
@@ -20,6 +21,22 @@ export function ReminderBell({ events, darkTheme, onDismiss }) {
               // If no current reminder is selected, set this one
               setCurrentReminder(curr => curr || newReminder);
               setShowModal(true);
+
+              // Try to request permission (if needed) and show a notification
+              (async () => {
+                try {
+                  const perm = await requestNotificationPermission();
+                  if (perm === 'granted') {
+                    showNotification(newReminder.title || 'Reminder', {
+                      body: newReminder.description || '',
+                      tag: `reminder-${newReminder.id}`
+                    });
+                  }
+                } catch (e) {
+                  // ignore notification failures
+                }
+              })();
+
               return [...prev, newReminder];
             });
           }
@@ -61,9 +78,7 @@ export function ReminderBell({ events, darkTheme, onDismiss }) {
 
   if (!hasActiveReminders) return null;
 
-  const bellStyle = darkTheme
-    ? { backgroundColor: '#ffc107', color: '#212529' }
-    : { backgroundColor: '#fd7e14', color: '#fff' };
+  const bellClass = darkTheme ? 'bell-dark' : 'bell-light';
 
   // compute a friendly display time for the current reminder
   let displayTime = '';
@@ -88,10 +103,9 @@ export function ReminderBell({ events, darkTheme, onDismiss }) {
   return (
     <>
       <button 
-        className={`btn position-relative`}
+        className={`btn position-relative ${bellClass}`}
         onClick={handleBellClick}
         title="Reminders"
-        style={bellStyle}
       >
         <i className="bi bi-bell-fill"></i>
       </button>
