@@ -29,8 +29,10 @@ jobs:
       - name: Deploy Worker
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          # Recommended: set CLOUDFLARE_API_TOKEN as well since CF deprecated CF_API_TOKEN
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         run: |
           # optional: print wrangler version
           wrangler --version
-          # deploy according to your wrangler.toml
-          wrangler deploy --verbose
+          # deploy according to your wrangler.toml (don't pass unsupported flags)
+          wrangler deploy
