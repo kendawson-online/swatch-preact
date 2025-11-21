@@ -1,4 +1,4 @@
-name = "api-worker"
+name = "swatch-preact"
 main = "workers/src/index.js"
 compatibility_date = "2025-11-21"
 account_id = "765ea57d5fa490159bdbfc689648cf05"
