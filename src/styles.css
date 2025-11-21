@@ -161,3 +161,26 @@
 /* Reminder bell button styles */
 .bell-dark { background-color: #ffc107; color: #212529; }
 .bell-light { background-color: #fd7e14; color: #fff; }
+
+/* smaller reminder badge so it doesn't clip at the top edge */
+.reminder-badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.35rem;
+  line-height: 1;
+  transform: translate(-30%, -30%);
+  top: 0.4rem !important;
+}
+
+/* styling for due/past reminders to indicate expired state */
+.reminder-due {
+  background-color: rgba(255,255,255,0.02);
+  color: #6c757d; /* muted */
+}
+.reminder-due .bi { color: #6c757d; }
+
+/* Future / Past row styling */
+.reminder-future-row { background-color: rgba(40, 167, 69, 0.04); }
+.reminder-past-row { background-color: rgba(220, 53, 69, 0.06); }
+
+.swatch-future { color: #28a745; }
+.swatch-past { color: #dc3545; }

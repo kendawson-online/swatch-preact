@@ -23,6 +23,13 @@ export async function requestNotificationPermission() {
 export async function showNotification(title, options = {}) {
   if (!('Notification' in window)) return false;
 
+  try {
+    const muted = localStorage.getItem('swatch_mute') === '1';
+    if (muted) return false;
+  } catch (e) {
+    // ignore storage errors
+  }
+
   // prefer service worker notifications if available
   try {
     const reg = await navigator.serviceWorker.getRegistration();

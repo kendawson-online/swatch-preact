@@ -1,8 +1,9 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { normalizeBeats } from '../utils/swatchTime';
 import { computeReminderDate } from '../utils/reminderTime';
+import { requestNotificationPermission, showNotification } from '../utils/notifications';
 
-export function ReminderModal({ onEventCreate, modalRef }) {
+export function ReminderModal({ onEventSave, modalRef, selectedEvent }) {
   const [reminderData, setReminderData] = useState({
     title: '',
     description: '',
@@ -12,7 +13,7 @@ export function ReminderModal({ onEventCreate, modalRef }) {
   });
   const [errors, setErrors] = useState({});
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
 
@@ -38,7 +39,43 @@ export function ReminderModal({ onEventCreate, modalRef }) {
     }
 
     setErrors({});
-    onEventCreate(reminderData);
+    // Request notification permission proactively when the user schedules a reminder.
+    // This ensures the permission prompt appears when the reminder is created, not when it fires.
+    try {
+      const perm = await requestNotificationPermission();
+      if (perm === 'granted') {
+        try {
+          showNotification('Reminder scheduled', {
+            body: reminderData.title || 'Your reminder has been scheduled.',
+            tag: `reminder-scheduled-${Date.now()}`
+          });
+        } catch (e) {
+          // ignore notification failures
+        }
+      }
+    } catch (e) {
+      // ignore permission errors
+    }
+
+    if (typeof onEventSave === 'function') onEventSave(reminderData);
+
+    // After successful save, hide this modal and re-open the Reminders modal.
+    try {
+      const el = modalRef && modalRef.current;
+      if (el && window.bootstrap && window.bootstrap.Modal) {
+        const inst = window.bootstrap.Modal.getOrCreateInstance(el);
+        inst.hide();
+      }
+      setTimeout(() => {
+        try {
+          const parentEl = document.getElementById('remindersModal');
+          if (parentEl && window.bootstrap && window.bootstrap.Modal) {
+            const pinst = window.bootstrap.Modal.getOrCreateInstance(parentEl);
+            pinst.show();
+          }
+        } catch (e) {}
+      }, 120);
+    } catch (e) {}
     // Reset form
     setReminderData({
       title: '',
@@ -48,6 +85,24 @@ export function ReminderModal({ onEventCreate, modalRef }) {
       swatchTime: '',
     });
   };
+
+  useEffect(() => {
+    if (selectedEvent && selectedEvent.id) {
+      // populate for edit
+      setReminderData({
+        title: selectedEvent.title || '',
+        description: selectedEvent.description || '',
+        startDate: selectedEvent.startDate || '',
+        startTime: selectedEvent.startTime || '',
+        swatchTime: selectedEvent.swatchTime || '',
+        id: selectedEvent.id
+      });
+    } else {
+      setReminderData({ title: '', description: '', startDate: '', startTime: '', swatchTime: '' });
+    }
+    // no special hidden handler needed when using Bootstrap toggle attributes
+    return undefined;
+  }, [selectedEvent]);
 
   const handleChange = (field, value) => {
     setReminderData({ ...reminderData, [field]: value });
@@ -123,7 +178,7 @@ export function ReminderModal({ onEventCreate, modalRef }) {
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" className="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#remindersModal">Cancel</button>
               <button type="submit" className="btn btn-primary">Create Reminder</button>
             </div>
           </form>

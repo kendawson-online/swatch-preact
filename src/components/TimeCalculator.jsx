@@ -99,12 +99,14 @@ export function TimeCalculator({ settings }) {
 
   const handleConvertClick = (e) => {
     e.preventDefault();
-    // Prefer converting local inputs when any local field is present.
-    if (localHours !== '' || localMinutes !== '' || localSeconds !== '') {
-      // Pass onConvert=true so invalid values are reset to 00:00:00.
-      handleLocalChange(localHours, localMinutes, localSeconds, localAmPm, true);
-    } else if (swatchValue && swatchValue.trim() !== '') {
+    // Prefer converting the swatch beats input when it's present. If it's
+    // empty, fall back to converting the local time inputs (this allows the
+    // user to convert either direction predictably). When converting local
+    // inputs explicitly, pass onConvert=true so invalid values are reset.
+    if (swatchValue && swatchValue.trim() !== '') {
       handleSwatchSubmit();
+    } else if (localHours !== '' || localMinutes !== '' || localSeconds !== '') {
+      handleLocalChange(localHours, localMinutes, localSeconds, localAmPm, true);
     }
   };
 
@@ -117,6 +119,7 @@ export function TimeCalculator({ settings }) {
             <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div className="modal-body">
+            <form onSubmit={handleConvertClick}>
             <div className="mb-4">
               <label className="form-label">Swatch Internet Time (@beats)</label>
               <div className="input-group">
@@ -129,13 +132,12 @@ export function TimeCalculator({ settings }) {
                   value={swatchValue}
                   maxLength={7}
                   onChange={(e) => handleSwatchChange(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleConvertClick(e); }}
                 />
               </div>
             </div>
             
             <div className="text-center mb-3">
-              <button type="button" className="btn btn-lg btn-secondary" title="Convert selected time" onClick={handleConvertClick}>⇅</button>
+              <button type="submit" className="btn btn-lg btn-secondary px-5 py-2" title="Convert selected time">⇅</button>
             </div>
             
             <div className="mb-3">
@@ -228,6 +230,7 @@ export function TimeCalculator({ settings }) {
                 )}
               </div>
             </div>
+            </form>
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-danger" onClick={() => { setSwatchValue(''); setLocalHours(''); setLocalMinutes(''); setLocalSeconds(''); setLocalAmPm('AM'); }}>Clear</button>

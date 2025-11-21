@@ -3,6 +3,7 @@ import { SwatchClock } from './components/SwatchClock';
 import { SettingsModal } from './components/SettingsModal';
 import { ReminderModal } from './components/ReminderModal';
 import { ReminderBell } from './components/ReminderBell';
+import { RemindersModal } from './components/RemindersModal';
 import { TimeCalculator } from './components/TimeCalculator';
 import { Navbar } from './components/Navbar';
 import { computeReminderDate } from './utils/reminderTime';
@@ -84,6 +85,21 @@ export function App() {
   const reminderModalRef = useRef(null);
   const reminderModalApi = useBootstrapModal(reminderModalRef);
 
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
+  const [mute, setMute] = useState(() => {
+    try {
+      return localStorage.getItem('swatch_mute') === '1';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const setMuteAndPersist = (v) => {
+    setMute(v);
+    try { localStorage.setItem('swatch_mute', v ? '1' : '0'); } catch (e) {}
+  };
+
   useEffect(() => {
     // Apply theme
     if (settings.darkTheme) {
@@ -97,20 +113,27 @@ export function App() {
     }
   }, [settings.darkTheme]);
 
-  const handleEventCreate = (eventData) => {
+  const handleEventSave = (eventData) => {
     // compute reminderTime (ISO) from either standard time or swatchTime
-    let reminderDate = null;
-    reminderDate = computeReminderDate(eventData);
+    const reminderDate = computeReminderDate(eventData);
 
-    const newEvent = {
+    const base = {
       ...eventData,
-      id: Date.now(),
-      dismissed: false,
-      reminderTime: reminderDate ? reminderDate.toISOString() : null
+      reminderTime: reminderDate ? reminderDate.toISOString() : null,
+      dismissed: false
     };
-    const updatedEvents = [...events, newEvent];
+
+    let updatedEvents;
+    if (eventData.id) {
+      // update existing
+      updatedEvents = events.map(ev => ev.id === eventData.id ? { ...ev, ...base } : ev);
+    } else {
+      const newEvent = { ...base, id: Date.now() };
+      updatedEvents = [...events, newEvent];
+    }
     setEvents(updatedEvents);
     saveReminders(updatedEvents);
+    setSelectedEvent(null);
     // Close modal via ref-based API
     if (reminderModalApi && typeof reminderModalApi.hide === 'function') reminderModalApi.hide();
   };
@@ -124,6 +147,7 @@ export function App() {
         setSettings={setSettings}
         events={events}
         setEvents={setEvents}
+        mute={mute}
       />
       <div className="row justify-content-center">
         <div className="col-lg-8">
@@ -138,7 +162,8 @@ export function App() {
         </div>
       </div>
       <SettingsModal settings={settings} onSettingsChange={setSettings} />
-      <ReminderModal onEventCreate={handleEventCreate} modalRef={reminderModalRef} />
+      <ReminderModal onEventSave={handleEventSave} modalRef={reminderModalRef} selectedEvent={selectedEvent} />
+      <RemindersModal events={events} setEvents={setEvents} reminderModalRef={reminderModalRef} setSelectedEvent={setSelectedEvent} mute={mute} setMute={setMuteAndPersist} />
       <TimeCalculator settings={settings} />
     </div>
   );

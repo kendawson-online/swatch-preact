@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
-import { requestNotificationPermission, showNotification } from '../utils/notifications';
+import { showNotification } from '../utils/notifications';
 
-export function ReminderBell({ events, darkTheme, onDismiss }) {
+export function ReminderBell({ events, darkTheme, onDismiss, mute }) {
   const [activeReminders, setActiveReminders] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [currentReminder, setCurrentReminder] = useState(null);
@@ -9,35 +9,30 @@ export function ReminderBell({ events, darkTheme, onDismiss }) {
   useEffect(() => {
     // Check for events that need reminders. Use functional updates to avoid
     // reading stale state and prevent effect re-creation loops.
-    const checkReminders = () => {
+      const checkReminders = () => {
       const now = new Date();
       events.forEach(event => {
         if (event.reminderTime && !event.dismissed) {
           const reminderTime = new Date(event.reminderTime);
           if (now >= reminderTime) {
             setActiveReminders(prev => {
-              if (prev.find(r => r.id === event.id)) return prev;
-              const newReminder = { ...event, acknowledged: false };
-              // If no current reminder is selected, set this one
-              setCurrentReminder(curr => curr || newReminder);
-              setShowModal(true);
-
-              // Try to request permission (if needed) and show a notification
-              (async () => {
+                if (prev.find(r => r.id === event.id)) return prev;
+                const newReminder = { ...event, acknowledged: false };
+                // Keep current reminder as-is (show oldest first). Only set if none
+                setCurrentReminder(curr => curr || newReminder);
+                setShowModal(true);
+                // attempt to show a system notification (warned at create time)
                 try {
-                  const perm = await requestNotificationPermission();
-                  if (perm === 'granted') {
-                    showNotification(newReminder.title || 'Reminder', {
-                      body: newReminder.description || '',
-                      tag: `reminder-${newReminder.id}`
+                  if (!mute) {
+                    showNotification(event.title || 'Reminder', {
+                      body: event.description || '',
+                      tag: `reminder-${event.id}`
                     });
                   }
                 } catch (e) {
-                  // ignore notification failures
+                  // ignore
                 }
-              })();
-
-              return [...prev, newReminder];
+                return [...prev, newReminder];
             });
           }
         }
@@ -50,6 +45,33 @@ export function ReminderBell({ events, darkTheme, onDismiss }) {
     return () => clearInterval(interval);
   }, [events]);
 
+  // Keep activeReminders in sync with events prop: if an event was removed
+  // from storage (e.g. dismissed via RemindersModal), ensure we clear it
+  // from the active list and hide the bell/modal when appropriate.
+  useEffect(() => {
+    if (!events || events.length === 0) {
+      setActiveReminders([]);
+      setCurrentReminder(null);
+      setShowModal(false);
+      return;
+    }
+    const ids = new Set(events.map(e => e.id));
+    setActiveReminders(prev => {
+      const filtered = prev.filter(r => ids.has(r.id));
+      if (filtered.length === 0) {
+        setCurrentReminder(null);
+        setShowModal(false);
+      } else {
+        setCurrentReminder(curr => {
+          if (!curr) return filtered[0];
+          if (!ids.has(curr.id)) return filtered[0];
+          return curr;
+        });
+      }
+      return filtered;
+    });
+  }, [events]);
+
   const handleOk = () => {
     if (currentReminder) {
       setActiveReminders(prev =>
@@ -60,11 +82,25 @@ export function ReminderBell({ events, darkTheme, onDismiss }) {
   };
 
   const handleDismiss = () => {
-    if (currentReminder) {
-      setActiveReminders(prev => prev.filter(r => r.id !== currentReminder.id));
+    if (!currentReminder) return;
+
+    // remove from internal active list
+    setActiveReminders(prev => {
+      const remaining = prev.filter(r => r.id !== currentReminder.id);
+      // inform parent to remove from storage/state
       if (typeof onDismiss === 'function') onDismiss(currentReminder.id);
-    }
-    setShowModal(false);
+
+      if (remaining.length > 0) {
+        // advance to next reminder and keep modal shown
+        setCurrentReminder(remaining[0]);
+        setShowModal(true);
+      } else {
+        // no more active reminders -> clear and hide
+        setCurrentReminder(null);
+        setShowModal(false);
+      }
+      return remaining;
+    });
   };
 
   const handleBellClick = () => {
@@ -76,7 +112,8 @@ export function ReminderBell({ events, darkTheme, onDismiss }) {
 
   const hasActiveReminders = activeReminders.length > 0;
 
-  if (!hasActiveReminders) return null;
+  // If there are no active reminders and we're not muted, don't render the bell at all
+  if (!hasActiveReminders && !mute) return null;
 
   const bellClass = darkTheme ? 'bell-dark' : 'bell-light';
 
@@ -105,9 +142,10 @@ export function ReminderBell({ events, darkTheme, onDismiss }) {
       <button 
         className={`btn position-relative ${bellClass}`}
         onClick={handleBellClick}
-        title="Reminders"
+        title={hasActiveReminders ? 'Reminders' : 'No active reminders'}
+        disabled={!hasActiveReminders}
       >
-        <i className="bi bi-bell-fill"></i>
+        <i className={`bi ${mute ? 'bi-bell-slash-fill' : (hasActiveReminders ? 'bi-bell-fill' : 'bi-bell')}`}></i>
       </button>
 
       {showModal && currentReminder && (
