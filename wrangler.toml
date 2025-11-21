@@ -1,7 +1,0 @@
-name = "api-worker"
-main = "workers/src/index.js"
-compatibility_date = "2025-11-21"
-account_id = "765ea57d5fa490159bdbfc689648cf05"
-workers_dev = true
-# zone_id = "5fa196745c768e415eef8d63b6458220"
-# route = "api.swatchtime.online/*"
