@@ -56,7 +56,7 @@ export function RemindersModal({ events, setEvents, reminderModalRef, setSelecte
       }
     } else {
       // user tried to uncheck; instruct to revoke permission in browser
-      alert('To revoke browser notification permission please use your browser site settings. The checkbox reflects the browser permission state.');
+      alert('This checkbox reflects your browser\'s permission settings for notifications. To revoke these permissions, you have to change your browser settings. Learn more: https://swatchtime.online/notifications.html');
       // keep checkbox reflecting actual permission
       e.target.checked = Notification.permission === 'granted';
     }
